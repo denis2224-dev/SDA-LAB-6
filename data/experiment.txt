@@ -1,0 +1,3 @@
+Ion;Popescu;Rice;AgroMold;12;4;2026;20.50;25.00;120;2
+Maria;Rusu;Sugar;SweetMold;3;5;2026;15.00;19.00;45;2
+Ana;Ionescu;Salt;MoldSalt;7;5;2025;10.00;12.00;3000;3
