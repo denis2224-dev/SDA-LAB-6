@@ -1,5 +1,6 @@
 #include "queue.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 
 static void queue_relink_if_circular(Queue *queue) {
@@ -11,6 +12,26 @@ static void queue_relink_if_circular(Queue *queue) {
     }
     queue->rear->next = queue->front;
     queue->front->prev = queue->rear;
+}
+
+static int text_equals_ignore_case(const char *left, const char *right) {
+    unsigned char lc;
+    unsigned char rc;
+
+    if (left == NULL || right == NULL) {
+        return 0;
+    }
+
+    while (*left != '\0' && *right != '\0') {
+        lc = (unsigned char)*left;
+        rc = (unsigned char)*right;
+        if (tolower(lc) != tolower(rc)) {
+            return 0;
+        }
+        left++;
+        right++;
+    }
+    return *left == '\0' && *right == '\0';
 }
 
 void queue_init(Queue *queue, QueueType type) {
@@ -483,4 +504,140 @@ int priority_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_ou
     }
     node_destroy(node);
     return 1;
+}
+
+Node *queue_node_at(const Queue *queue, size_t position) {
+    Node *current;
+    size_t index = 1;
+
+    if (queue == NULL || position == 0 || position > queue->size) {
+        return NULL;
+    }
+
+    current = queue->front;
+    while (current != NULL) {
+        if (index == position) {
+            return current;
+        }
+        current = current->next;
+        index++;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->front) {
+            break;
+        }
+    }
+    return NULL;
+}
+
+static size_t queue_search_text_field(const Queue *queue,
+                                      const char *needle,
+                                      const char *(*extractor)(const WarehouseRecord *),
+                                      size_t *positions,
+                                      size_t max_positions) {
+    Node *current;
+    size_t index = 1;
+    size_t matched = 0;
+
+    if (queue == NULL || needle == NULL || extractor == NULL || needle[0] == '\0') {
+        return 0;
+    }
+
+    current = queue->front;
+    while (current != NULL) {
+        if (text_equals_ignore_case(extractor(&current->data), needle)) {
+            if (positions != NULL && matched < max_positions) {
+                positions[matched] = index;
+            }
+            matched++;
+        }
+
+        current = current->next;
+        index++;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->front) {
+            break;
+        }
+    }
+
+    return matched;
+}
+
+static const char *extract_product_name(const WarehouseRecord *record) {
+    return record->product_name;
+}
+
+static const char *extract_owner_surname(const WarehouseRecord *record) {
+    return record->owner_surname;
+}
+
+static const char *extract_manufacturer(const WarehouseRecord *record) {
+    return record->manufacturer;
+}
+
+size_t queue_search_product_name(const Queue *queue, const char *product_name, size_t *positions, size_t max_positions) {
+    return queue_search_text_field(queue, product_name, extract_product_name, positions, max_positions);
+}
+
+size_t queue_search_owner_surname(const Queue *queue, const char *owner_surname, size_t *positions, size_t max_positions) {
+    return queue_search_text_field(queue, owner_surname, extract_owner_surname, positions, max_positions);
+}
+
+size_t queue_search_manufacturer(const Queue *queue, const char *manufacturer, size_t *positions, size_t max_positions) {
+    return queue_search_text_field(queue, manufacturer, extract_manufacturer, positions, max_positions);
+}
+
+size_t queue_search_contract_year(const Queue *queue, int year, size_t *positions, size_t max_positions) {
+    Node *current;
+    size_t index = 1;
+    size_t matched = 0;
+
+    if (queue == NULL) {
+        return 0;
+    }
+
+    current = queue->front;
+    while (current != NULL) {
+        if (current->data.contract_date.year == year) {
+            if (positions != NULL && matched < max_positions) {
+                positions[matched] = index;
+            }
+            matched++;
+        }
+        current = current->next;
+        index++;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->front) {
+            break;
+        }
+    }
+
+    return matched;
+}
+
+size_t queue_search_unit_price_interval(const Queue *queue,
+                                        double min_price,
+                                        double max_price,
+                                        size_t *positions,
+                                        size_t max_positions) {
+    Node *current;
+    size_t index = 1;
+    size_t matched = 0;
+
+    if (queue == NULL || min_price > max_price) {
+        return 0;
+    }
+
+    current = queue->front;
+    while (current != NULL) {
+        if (current->data.unit_price >= min_price && current->data.unit_price <= max_price) {
+            if (positions != NULL && matched < max_positions) {
+                positions[matched] = index;
+            }
+            matched++;
+        }
+        current = current->next;
+        index++;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->front) {
+            break;
+        }
+    }
+
+    return matched;
 }

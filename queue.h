@@ -57,4 +57,15 @@ int circular_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_ou
 int priority_enqueue(Queue *queue, const WarehouseRecord *record, int manual_priority, int use_manual_priority);
 int priority_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out);
 
+Node *queue_node_at(const Queue *queue, size_t position);
+size_t queue_search_product_name(const Queue *queue, const char *product_name, size_t *positions, size_t max_positions);
+size_t queue_search_owner_surname(const Queue *queue, const char *owner_surname, size_t *positions, size_t max_positions);
+size_t queue_search_manufacturer(const Queue *queue, const char *manufacturer, size_t *positions, size_t max_positions);
+size_t queue_search_contract_year(const Queue *queue, int year, size_t *positions, size_t max_positions);
+size_t queue_search_unit_price_interval(const Queue *queue,
+                                        double min_price,
+                                        double max_price,
+                                        size_t *positions,
+                                        size_t max_positions);
+
 #endif
