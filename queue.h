@@ -44,5 +44,11 @@ int simple_enqueue(Queue *queue, const WarehouseRecord *record);
 int simple_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out);
 int simple_peek_front(const Queue *queue, WarehouseRecord *record_out, int *priority_out);
 void queue_display_forward(const Queue *queue, FILE *stream);
+void queue_display_backward(const Queue *queue, FILE *stream);
+
+int deque_insert_front(Queue *queue, const WarehouseRecord *record);
+int deque_insert_rear(Queue *queue, const WarehouseRecord *record);
+int deque_delete_front(Queue *queue, WarehouseRecord *record_out, int *priority_out);
+int deque_delete_rear(Queue *queue, WarehouseRecord *record_out, int *priority_out);
 
 #endif

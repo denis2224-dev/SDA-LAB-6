@@ -267,3 +267,105 @@ void queue_display_forward(const Queue *queue, FILE *stream) {
         }
     }
 }
+
+void queue_display_backward(const Queue *queue, FILE *stream) {
+    Node *current;
+    int index;
+
+    if (stream == NULL) {
+        return;
+    }
+    if (queue == NULL || queue->rear == NULL) {
+        fprintf(stream, "Queue is empty.\n");
+        return;
+    }
+
+    current = queue->rear;
+    index = (int)queue->size;
+    while (current != NULL) {
+        print_warehouse_record(stream, &current->data, index, current->priority);
+        current = current->prev;
+        index--;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->rear) {
+            break;
+        }
+    }
+}
+
+int deque_insert_front(Queue *queue, const WarehouseRecord *record) {
+    Node *node;
+
+    if (queue == NULL || record == NULL || queue->type != QUEUE_DEQUE) {
+        return 0;
+    }
+
+    node = node_create(record, warehouse_auto_priority(record));
+    if (node == NULL) {
+        return 0;
+    }
+    if (!queue_attach_front(queue, node)) {
+        node_destroy(node);
+        return 0;
+    }
+    return 1;
+}
+
+int deque_insert_rear(Queue *queue, const WarehouseRecord *record) {
+    Node *node;
+
+    if (queue == NULL || record == NULL || queue->type != QUEUE_DEQUE) {
+        return 0;
+    }
+
+    node = node_create(record, warehouse_auto_priority(record));
+    if (node == NULL) {
+        return 0;
+    }
+    if (!queue_attach_back(queue, node)) {
+        node_destroy(node);
+        return 0;
+    }
+    return 1;
+}
+
+int deque_delete_front(Queue *queue, WarehouseRecord *record_out, int *priority_out) {
+    Node *node;
+
+    if (queue == NULL || queue->type != QUEUE_DEQUE) {
+        return 0;
+    }
+
+    node = queue_detach_front(queue);
+    if (node == NULL) {
+        return 0;
+    }
+    if (record_out != NULL) {
+        *record_out = node->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = node->priority;
+    }
+    node_destroy(node);
+    return 1;
+}
+
+int deque_delete_rear(Queue *queue, WarehouseRecord *record_out, int *priority_out) {
+    Node *node;
+
+    if (queue == NULL || queue->type != QUEUE_DEQUE) {
+        return 0;
+    }
+
+    node = queue_detach_rear(queue);
+    if (node == NULL) {
+        return 0;
+    }
+    if (record_out != NULL) {
+        *record_out = node->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = node->priority;
+    }
+    node_destroy(node);
+    return 1;
+}
