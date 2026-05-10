@@ -68,4 +68,8 @@ size_t queue_search_unit_price_interval(const Queue *queue,
                                         size_t *positions,
                                         size_t max_positions);
 
+int queue_delete_by_position(Queue *queue, size_t position, WarehouseRecord *record_out, int *priority_out);
+size_t queue_delete_by_product_name(Queue *queue, const char *product_name, int delete_all);
+size_t queue_delete_by_owner_surname(Queue *queue, const char *owner_surname, int delete_all);
+
 #endif

@@ -34,6 +34,27 @@ static int text_equals_ignore_case(const char *left, const char *right) {
     return *left == '\0' && *right == '\0';
 }
 
+static int queue_remove_middle_node(Queue *queue, Node *node, WarehouseRecord *record_out, int *priority_out) {
+    if (queue == NULL || node == NULL || node->prev == NULL || node->next == NULL) {
+        return 0;
+    }
+
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+
+    if (record_out != NULL) {
+        *record_out = node->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = node->priority;
+    }
+
+    node_destroy(node);
+    queue->size--;
+    queue_relink_if_circular(queue);
+    return 1;
+}
+
 void queue_init(Queue *queue, QueueType type) {
     if (queue == NULL) {
         return;
@@ -640,4 +661,99 @@ size_t queue_search_unit_price_interval(const Queue *queue,
     }
 
     return matched;
+}
+
+int queue_delete_by_position(Queue *queue, size_t position, WarehouseRecord *record_out, int *priority_out) {
+    Node *node;
+
+    if (queue == NULL || position == 0 || position > queue->size) {
+        return 0;
+    }
+
+    node = queue_node_at(queue, position);
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (node == queue->front) {
+        Node *detached = queue_detach_front(queue);
+        if (detached == NULL) {
+            return 0;
+        }
+        if (record_out != NULL) {
+            *record_out = detached->data;
+        }
+        if (priority_out != NULL) {
+            *priority_out = detached->priority;
+        }
+        node_destroy(detached);
+        return 1;
+    }
+
+    if (node == queue->rear) {
+        Node *detached = queue_detach_rear(queue);
+        if (detached == NULL) {
+            return 0;
+        }
+        if (record_out != NULL) {
+            *record_out = detached->data;
+        }
+        if (priority_out != NULL) {
+            *priority_out = detached->priority;
+        }
+        node_destroy(detached);
+        return 1;
+    }
+
+    return queue_remove_middle_node(queue, node, record_out, priority_out);
+}
+
+size_t queue_delete_by_product_name(Queue *queue, const char *product_name, int delete_all) {
+    size_t removed = 0;
+
+    if (queue == NULL || product_name == NULL || product_name[0] == '\0') {
+        return 0;
+    }
+
+    while (1) {
+        size_t first_match_position = 0;
+        size_t matches = queue_search_product_name(queue, product_name, &first_match_position, 1);
+        if (matches == 0) {
+            break;
+        }
+        if (!queue_delete_by_position(queue, first_match_position, NULL, NULL)) {
+            break;
+        }
+        removed++;
+        if (!delete_all) {
+            break;
+        }
+    }
+
+    return removed;
+}
+
+size_t queue_delete_by_owner_surname(Queue *queue, const char *owner_surname, int delete_all) {
+    size_t removed = 0;
+
+    if (queue == NULL || owner_surname == NULL || owner_surname[0] == '\0') {
+        return 0;
+    }
+
+    while (1) {
+        size_t first_match_position = 0;
+        size_t matches = queue_search_owner_surname(queue, owner_surname, &first_match_position, 1);
+        if (matches == 0) {
+            break;
+        }
+        if (!queue_delete_by_position(queue, first_match_position, NULL, NULL)) {
+            break;
+        }
+        removed++;
+        if (!delete_all) {
+            break;
+        }
+    }
+
+    return removed;
 }
