@@ -369,3 +369,44 @@ int deque_delete_rear(Queue *queue, WarehouseRecord *record_out, int *priority_o
     node_destroy(node);
     return 1;
 }
+
+int circular_enqueue(Queue *queue, const WarehouseRecord *record) {
+    Node *node;
+
+    if (queue == NULL || record == NULL || queue->type != QUEUE_CIRCULAR) {
+        return 0;
+    }
+
+    node = node_create(record, warehouse_auto_priority(record));
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (!queue_attach_back(queue, node)) {
+        node_destroy(node);
+        return 0;
+    }
+    return 1;
+}
+
+int circular_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out) {
+    Node *node;
+
+    if (queue == NULL || queue->type != QUEUE_CIRCULAR) {
+        return 0;
+    }
+
+    node = queue_detach_front(queue);
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (record_out != NULL) {
+        *record_out = node->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = node->priority;
+    }
+    node_destroy(node);
+    return 1;
+}

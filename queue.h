@@ -51,4 +51,7 @@ int deque_insert_rear(Queue *queue, const WarehouseRecord *record);
 int deque_delete_front(Queue *queue, WarehouseRecord *record_out, int *priority_out);
 int deque_delete_rear(Queue *queue, WarehouseRecord *record_out, int *priority_out);
 
+int circular_enqueue(Queue *queue, const WarehouseRecord *record);
+int circular_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out);
+
 #endif
