@@ -186,3 +186,84 @@ Node *queue_detach_rear(Queue *queue) {
     queue_relink_if_circular(queue);
     return node;
 }
+
+int simple_enqueue(Queue *queue, const WarehouseRecord *record) {
+    Node *node;
+    int priority;
+
+    if (queue == NULL || record == NULL || queue->type != QUEUE_SIMPLE) {
+        return 0;
+    }
+
+    priority = warehouse_auto_priority(record);
+    node = node_create(record, priority);
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (!queue_attach_back(queue, node)) {
+        node_destroy(node);
+        return 0;
+    }
+    return 1;
+}
+
+int simple_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out) {
+    Node *node;
+
+    if (queue == NULL || queue->type != QUEUE_SIMPLE) {
+        return 0;
+    }
+
+    node = queue_detach_front(queue);
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (record_out != NULL) {
+        *record_out = node->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = node->priority;
+    }
+
+    node_destroy(node);
+    return 1;
+}
+
+int simple_peek_front(const Queue *queue, WarehouseRecord *record_out, int *priority_out) {
+    if (queue == NULL || queue->type != QUEUE_SIMPLE || queue->front == NULL) {
+        return 0;
+    }
+
+    if (record_out != NULL) {
+        *record_out = queue->front->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = queue->front->priority;
+    }
+    return 1;
+}
+
+void queue_display_forward(const Queue *queue, FILE *stream) {
+    Node *current;
+    int index = 1;
+
+    if (stream == NULL) {
+        return;
+    }
+    if (queue == NULL || queue->front == NULL) {
+        fprintf(stream, "Queue is empty.\n");
+        return;
+    }
+
+    current = queue->front;
+    while (current != NULL) {
+        print_warehouse_record(stream, &current->data, index, current->priority);
+        current = current->next;
+        index++;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->front) {
+            break;
+        }
+    }
+}

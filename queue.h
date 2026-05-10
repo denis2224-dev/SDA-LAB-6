@@ -2,6 +2,7 @@
 #define QUEUE_H
 
 #include <stddef.h>
+#include <stdio.h>
 
 #include "warehouse.h"
 
@@ -38,5 +39,10 @@ int queue_attach_back(Queue *queue, Node *node);
 int queue_attach_front(Queue *queue, Node *node);
 Node *queue_detach_front(Queue *queue);
 Node *queue_detach_rear(Queue *queue);
+
+int simple_enqueue(Queue *queue, const WarehouseRecord *record);
+int simple_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out);
+int simple_peek_front(const Queue *queue, WarehouseRecord *record_out, int *priority_out);
+void queue_display_forward(const Queue *queue, FILE *stream);
 
 #endif
