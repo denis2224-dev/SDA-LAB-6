@@ -757,3 +757,46 @@ size_t queue_delete_by_owner_surname(Queue *queue, const char *owner_surname, in
 
     return removed;
 }
+
+int queue_export_arrays(const Queue *queue, WarehouseRecord **records_out, int **priorities_out, size_t *count_out) {
+    WarehouseRecord *records;
+    int *priorities;
+    Node *current;
+    size_t index = 0;
+
+    if (queue == NULL || records_out == NULL || priorities_out == NULL || count_out == NULL) {
+        return 0;
+    }
+
+    *records_out = NULL;
+    *priorities_out = NULL;
+    *count_out = 0;
+
+    if (queue->size == 0) {
+        return 1;
+    }
+
+    records = (WarehouseRecord *)calloc(queue->size, sizeof(WarehouseRecord));
+    priorities = (int *)calloc(queue->size, sizeof(int));
+    if (records == NULL || priorities == NULL) {
+        free(records);
+        free(priorities);
+        return 0;
+    }
+
+    current = queue->front;
+    while (current != NULL && index < queue->size) {
+        records[index] = current->data;
+        priorities[index] = current->priority;
+        index++;
+        current = current->next;
+        if (queue->type == QUEUE_CIRCULAR && current == queue->front) {
+            break;
+        }
+    }
+
+    *records_out = records;
+    *priorities_out = priorities;
+    *count_out = index;
+    return 1;
+}
