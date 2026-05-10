@@ -9,4 +9,5 @@ set(CMAKE_C_EXTENSIONS OFF)
 add_executable(lab6_queue_adt
     main.c
     warehouse.c
+    file_ops.c
 )
