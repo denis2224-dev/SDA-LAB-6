@@ -13,6 +13,7 @@
 #define EXPERIMENT_PATH "data/experiment.txt"
 #define OUTPUT_PATH "data/output.txt"
 
+// Holds one queue instance per queue type and the currently active one.
 typedef struct {
     Queue simple_queue;
     Queue deque_queue;
@@ -20,6 +21,8 @@ typedef struct {
     Queue priority_queue;
     QueueType active_type;
 } AppState;
+
+// -------- Input and validation helpers --------
 
 static void trim_newline(char *text) {
     size_t len;
@@ -176,6 +179,8 @@ static int ensure_data_directory(void) {
     return 0;
 }
 
+// -------- Queue selection and record input --------
+
 static Queue *get_queue_by_type(AppState *state, QueueType type) {
     if (type == QUEUE_SIMPLE) {
         return &state->simple_queue;
@@ -301,6 +306,7 @@ static int enqueue_for_selected_type(Queue *queue, const WarehouseRecord *record
         return circular_enqueue(queue, record);
     }
 
+    // For priority queue user may replace the automatic priority rule.
     use_manual_priority = prompt_yes_no("Manual priority override? (y/n): ");
     manual_priority = warehouse_auto_priority(record);
     if (use_manual_priority) {
@@ -337,6 +343,7 @@ static int load_records_into_queue(Queue *queue, const char *file_path, int clea
         return 0;
     }
 
+    // Preserve the selected queue behavior while loading.
     for (i = 0; i < count; i++) {
         if (queue->type == QUEUE_SIMPLE) {
             loaded_count += simple_enqueue(queue, &records[i]);
@@ -414,6 +421,8 @@ static void run_simple_queue_menu(Queue *queue) {
         }
     }
 }
+
+// -------- Queue-specific submenus --------
 
 static void run_deque_menu(Queue *queue) {
     int option;
@@ -554,6 +563,8 @@ static void run_priority_menu(Queue *queue) {
         }
     }
 }
+
+// -------- Search/Delete/Save menu actions --------
 
 static void print_search_matches(const Queue *queue, const size_t *positions, size_t count) {
     size_t i;

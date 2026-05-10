@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+// Restores circular links after structural updates.
 static void queue_relink_if_circular(Queue *queue) {
     if (queue == NULL || queue->type != QUEUE_CIRCULAR) {
         return;
@@ -14,6 +15,7 @@ static void queue_relink_if_circular(Queue *queue) {
     queue->front->prev = queue->rear;
 }
 
+// Case-insensitive strict string equality used by search filters.
 static int text_equals_ignore_case(const char *left, const char *right) {
     unsigned char lc;
     unsigned char rc;
@@ -34,6 +36,7 @@ static int text_equals_ignore_case(const char *left, const char *right) {
     return *left == '\0' && *right == '\0';
 }
 
+// Removes a non-edge node (neither front nor rear).
 static int queue_remove_middle_node(Queue *queue, Node *node, WarehouseRecord *record_out, int *priority_out) {
     if (queue == NULL || node == NULL || node->prev == NULL || node->next == NULL) {
         return 0;
@@ -130,6 +133,7 @@ int queue_attach_back(Queue *queue, Node *node) {
         return 0;
     }
 
+    // Temporarily break circular ring while inserting.
     if (queue->type == QUEUE_CIRCULAR && queue->rear != NULL) {
         queue->rear->next = NULL;
         queue->front->prev = NULL;
@@ -155,6 +159,7 @@ int queue_attach_front(Queue *queue, Node *node) {
         return 0;
     }
 
+    // Temporarily break circular ring while inserting.
     if (queue->type == QUEUE_CIRCULAR && queue->rear != NULL) {
         queue->rear->next = NULL;
         queue->front->prev = NULL;
@@ -182,6 +187,7 @@ Node *queue_detach_front(Queue *queue) {
         return NULL;
     }
 
+    // Temporarily break circular ring while removing.
     if (queue->type == QUEUE_CIRCULAR && queue->rear != NULL) {
         queue->rear->next = NULL;
         queue->front->prev = NULL;
@@ -209,6 +215,7 @@ Node *queue_detach_rear(Queue *queue) {
         return NULL;
     }
 
+    // Temporarily break circular ring while removing.
     if (queue->type == QUEUE_CIRCULAR && queue->rear != NULL) {
         queue->rear->next = NULL;
         queue->front->prev = NULL;
@@ -477,6 +484,7 @@ int priority_enqueue(Queue *queue, const WarehouseRecord *record, int manual_pri
     }
 
     cursor = queue->front;
+    // Keep equal priorities stable by moving past existing equal elements.
     while (cursor != NULL && cursor->priority >= priority) {
         cursor = cursor->next;
     }
@@ -565,6 +573,7 @@ static size_t queue_search_text_field(const Queue *queue,
     current = queue->front;
     while (current != NULL) {
         if (text_equals_ignore_case(extractor(&current->data), needle)) {
+            // Store only as many positions as caller can hold.
             if (positions != NULL && matched < max_positions) {
                 positions[matched] = index;
             }
@@ -675,6 +684,7 @@ int queue_delete_by_position(Queue *queue, size_t position, WarehouseRecord *rec
         return 0;
     }
 
+    // Use detach helpers for edge nodes to preserve queue invariants.
     if (node == queue->front) {
         Node *detached = queue_detach_front(queue);
         if (detached == NULL) {
@@ -784,6 +794,7 @@ int queue_export_arrays(const Queue *queue, WarehouseRecord **records_out, int *
         return 0;
     }
 
+    // Export in traversal order for deterministic save output.
     current = queue->front;
     while (current != NULL && index < queue->size) {
         records[index] = current->data;

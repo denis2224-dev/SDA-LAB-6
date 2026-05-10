@@ -19,6 +19,7 @@ int validate_date(const Date *date) {
         return 0;
     }
 
+    // Adjust February for leap years.
     max_day = days_per_month[date->month - 1];
     is_leap = (date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0);
     if (date->month == 2 && is_leap) {
@@ -77,6 +78,7 @@ int warehouse_auto_priority(const WarehouseRecord *record) {
     if (total_value < 0.0) {
         return 0;
     }
+    // Clamp to int range.
     if (total_value > 2147483647.0) {
         return 2147483647;
     }

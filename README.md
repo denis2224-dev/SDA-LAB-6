@@ -119,3 +119,8 @@ Use interactive keyboard input from menu, or run scripted scenarios with:
 ```bash
 ./build/lab6_queue_adt < data/test_scenarios_input.txt
 ```
+
+## Code documentation notes
+
+- The source is documented with inline C comments (`// Comment` / `// Coment` style).
+- Comments explain logic decisions and data-flow steps, not obvious syntax.

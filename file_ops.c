@@ -6,6 +6,7 @@
 #define LINE_BUFFER_SIZE 512
 #define TMP_FILE_NAME "data/.tmp_merge_experiment.txt"
 
+// Shared validation used before formatting or writing records.
 static int validate_record_fields(const WarehouseRecord *record) {
     if (record == NULL) {
         return 0;
@@ -153,6 +154,7 @@ int load_records_from_file(const char *path, WarehouseRecord **records, size_t *
         return 0;
     }
 
+    // Read each line, keep only valid semicolon-separated records.
     while (fgets(line, sizeof(line), file) != NULL) {
         if (line[0] == '\n' || line[0] == '\r' || line[0] == '\0') {
             continue;
@@ -161,6 +163,7 @@ int load_records_from_file(const char *path, WarehouseRecord **records, size_t *
             continue;
         }
 
+        // Grow dynamic array when current capacity is exhausted.
         if (used == capacity) {
             WarehouseRecord *resized;
             capacity *= 2;
@@ -235,6 +238,7 @@ int copy_file_to_beginning(const char *source_path, const char *target_path) {
         return 0;
     }
 
+    // First copy source (output), then old target (experiment).
     while ((ch = fgetc(source_file)) != EOF) {
         fputc(ch, temp_file);
     }
