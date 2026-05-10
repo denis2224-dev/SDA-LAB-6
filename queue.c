@@ -410,3 +410,77 @@ int circular_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_ou
     node_destroy(node);
     return 1;
 }
+
+int priority_enqueue(Queue *queue, const WarehouseRecord *record, int manual_priority, int use_manual_priority) {
+    Node *node;
+    Node *cursor;
+    int priority;
+
+    if (queue == NULL || record == NULL || queue->type != QUEUE_PRIORITY) {
+        return 0;
+    }
+
+    priority = use_manual_priority ? manual_priority : warehouse_auto_priority(record);
+    node = node_create(record, priority);
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (queue->front == NULL) {
+        if (!queue_attach_back(queue, node)) {
+            node_destroy(node);
+            return 0;
+        }
+        return 1;
+    }
+
+    cursor = queue->front;
+    while (cursor != NULL && cursor->priority >= priority) {
+        cursor = cursor->next;
+    }
+
+    if (cursor == NULL) {
+        if (!queue_attach_back(queue, node)) {
+            node_destroy(node);
+            return 0;
+        }
+        return 1;
+    }
+
+    if (cursor->prev == NULL) {
+        if (!queue_attach_front(queue, node)) {
+            node_destroy(node);
+            return 0;
+        }
+        return 1;
+    }
+
+    node->next = cursor;
+    node->prev = cursor->prev;
+    cursor->prev->next = node;
+    cursor->prev = node;
+    queue->size++;
+    return 1;
+}
+
+int priority_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out) {
+    Node *node;
+
+    if (queue == NULL || queue->type != QUEUE_PRIORITY) {
+        return 0;
+    }
+
+    node = queue_detach_front(queue);
+    if (node == NULL) {
+        return 0;
+    }
+
+    if (record_out != NULL) {
+        *record_out = node->data;
+    }
+    if (priority_out != NULL) {
+        *priority_out = node->priority;
+    }
+    node_destroy(node);
+    return 1;
+}

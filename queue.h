@@ -54,4 +54,7 @@ int deque_delete_rear(Queue *queue, WarehouseRecord *record_out, int *priority_o
 int circular_enqueue(Queue *queue, const WarehouseRecord *record);
 int circular_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out);
 
+int priority_enqueue(Queue *queue, const WarehouseRecord *record, int manual_priority, int use_manual_priority);
+int priority_dequeue(Queue *queue, WarehouseRecord *record_out, int *priority_out);
+
 #endif
