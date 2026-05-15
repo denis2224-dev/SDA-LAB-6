@@ -1,6 +1,7 @@
 # Lab 6 - Solving Problems with STACK/QUEUE ADT + FILE + UDT (C)
 
 Procedural C project for Lab 6 using:
+- linked-list stack ADT;
 - linked-list queue ADTs (Simple, Double Ended, Circular, Priority);
 - dynamic memory allocation;
 - FILE operations;
@@ -51,6 +52,35 @@ cmake --build .
 
 ## Main menu
 
+The first menu chooses the data structure:
+
+1. Stack
+2. Queue
+0. Exit
+
+After that, each data structure has its own operations menu.
+
+## Stack menu
+
+1. Load records from `experiment.txt`
+2. Add record manually
+3. Display records
+4. Stack operations
+5. Search record
+6. Delete record
+7. Save current stack to `output.txt`
+8. Copy `output.txt` to beginning of `experiment.txt`
+9. Delete file
+0. Back to Stack/Queue selection
+
+Stack operations:
+- **push**: insert a record at the top;
+- **pop**: remove the top record;
+- **peek**: view the top record;
+- **display**: traverse from top to bottom.
+
+## Queue menu
+
 1. Load records from `experiment.txt`  
 2. Add record manually  
 3. Display records  
@@ -63,7 +93,7 @@ cmake --build .
 10. Save current queue to `output.txt`  
 11. Copy `output.txt` to beginning of `experiment.txt`  
 12. Delete file  
-0. Exit
+0. Back to Stack/Queue selection
 
 ## Queue type behavior
 
@@ -114,7 +144,7 @@ Example:
 
 ## Sample input
 
-Use interactive keyboard input from menu, or run scripted scenarios with:
+Use interactive keyboard input from menu, or run the scripted smoke scenario with:
 
 ```bash
 ./build/lab6_queue_adt < data/test_scenarios_input.txt

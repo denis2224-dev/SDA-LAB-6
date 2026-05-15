@@ -7,14 +7,16 @@
 
 #include "file_ops.h"
 #include "queue.h"
+#include "stack.h"
 #include "warehouse.h"
 
 #define INPUT_BUFFER_SIZE 256
 #define EXPERIMENT_PATH "data/experiment.txt"
 #define OUTPUT_PATH "data/output.txt"
 
-// Holds one queue instance per queue type and the currently active one.
+// Holds one stack plus one queue instance per queue type.
 typedef struct {
+    Stack stack;
     Queue simple_queue;
     Queue deque_queue;
     Queue circular_queue;
@@ -22,7 +24,7 @@ typedef struct {
     QueueType active_type;
 } AppState;
 
-// -------- Input and validation helpers --------
+// Input and validation helpers
 
 static void trim_newline(char *text) {
     size_t len;
@@ -790,6 +792,306 @@ static void save_active_queue_to_output(const Queue *queue) {
     free(priorities);
 }
 
+// -------- Stack menu actions --------
+
+static int load_records_into_stack(Stack *stack, const char *file_path, int clear_before_load) {
+    WarehouseRecord *records = NULL;
+    size_t count = 0;
+    size_t i;
+    int loaded_count = 0;
+
+    if (stack == NULL || file_path == NULL) {
+        return 0;
+    }
+
+    if (clear_before_load) {
+        stack_clear(stack);
+    }
+
+    if (!load_records_from_file(file_path, &records, &count)) {
+        return 0;
+    }
+
+    // Push in file order; the last file record becomes the stack top.
+    for (i = 0; i < count; i++) {
+        loaded_count += stack_push(stack, &records[i]);
+    }
+
+    free(records);
+    return loaded_count;
+}
+
+static void run_stack_operations_menu(Stack *stack) {
+    int option;
+    WarehouseRecord record;
+    int priority;
+
+    while (1) {
+        printf("\nStack operations menu:\n");
+        printf("1. Push record\n");
+        printf("2. Pop top record\n");
+        printf("3. Peek top record\n");
+        printf("4. Display stack\n");
+        printf("0. Back\n");
+
+        if (!prompt_int_in_range("Choice: ", 0, 4, &option)) {
+            return;
+        }
+
+        if (option == 0) {
+            return;
+        }
+        if (option == 1) {
+            if (!input_record_from_user(&record)) {
+                continue;
+            }
+            if (stack_push(stack, &record)) {
+                printf("Record pushed.\n");
+            } else {
+                printf("Push failed.\n");
+            }
+        } else if (option == 2) {
+            if (stack_pop(stack, &record, &priority)) {
+                print_deleted_record(&record, priority);
+            } else {
+                printf("Stack is empty.\n");
+            }
+        } else if (option == 3) {
+            if (stack_peek(stack, &record, &priority)) {
+                print_warehouse_record(stdout, &record, 1, priority);
+            } else {
+                printf("Stack is empty.\n");
+            }
+        } else if (option == 4) {
+            stack_display(stack, stdout);
+        }
+    }
+}
+
+static void print_stack_search_matches(const Stack *stack, const size_t *positions, size_t count) {
+    size_t i;
+    StackNode *node;
+
+    if (count == 0) {
+        printf("No matching records.\n");
+        return;
+    }
+
+    for (i = 0; i < count; i++) {
+        node = stack_node_at(stack, positions[i]);
+        if (node != NULL) {
+            print_warehouse_record(stdout, &node->data, (int)positions[i], node->priority);
+        }
+    }
+}
+
+static void run_stack_search_menu(const Stack *stack) {
+    int option;
+    int year;
+    double min_price;
+    double max_price;
+    char text[INPUT_BUFFER_SIZE];
+    size_t *positions = NULL;
+    size_t count = 0;
+    size_t max_positions;
+
+    if (stack == NULL || stack->size == 0) {
+        printf("Stack is empty.\n");
+        return;
+    }
+
+    max_positions = stack->size;
+    positions = (size_t *)calloc(max_positions, sizeof(size_t));
+    if (positions == NULL) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+
+    while (1) {
+        printf("\nStack search menu:\n");
+        printf("1. Search by position\n");
+        printf("2. Search by product name\n");
+        printf("3. Search by owner surname\n");
+        printf("4. Search by manufacturer\n");
+        printf("5. Search by contract year\n");
+        printf("6. Search by unit price interval\n");
+        printf("0. Back\n");
+
+        if (!prompt_int_in_range("Choice: ", 0, 6, &option)) {
+            break;
+        }
+        if (option == 0) {
+            break;
+        }
+
+        if (option == 1) {
+            int position;
+            StackNode *node;
+            if (!prompt_int_in_range("Position: ", 1, (int)stack->size, &position)) {
+                continue;
+            }
+            node = stack_node_at(stack, (size_t)position);
+            if (node != NULL) {
+                print_warehouse_record(stdout, &node->data, position, node->priority);
+            } else {
+                printf("Position not found.\n");
+            }
+            continue;
+        }
+
+        if (option == 2) {
+            if (!prompt_non_empty_text("Product name: ", text, sizeof(text))) {
+                continue;
+            }
+            count = stack_search_product_name(stack, text, positions, max_positions);
+        } else if (option == 3) {
+            if (!prompt_non_empty_text("Owner surname: ", text, sizeof(text))) {
+                continue;
+            }
+            count = stack_search_owner_surname(stack, text, positions, max_positions);
+        } else if (option == 4) {
+            if (!prompt_non_empty_text("Manufacturer: ", text, sizeof(text))) {
+                continue;
+            }
+            count = stack_search_manufacturer(stack, text, positions, max_positions);
+        } else if (option == 5) {
+            if (!prompt_int_in_range("Contract year: ", 1900, 2100, &year)) {
+                continue;
+            }
+            count = stack_search_contract_year(stack, year, positions, max_positions);
+        } else if (option == 6) {
+            if (!prompt_double_positive("Min unit price: ", &min_price)) {
+                continue;
+            }
+            if (!prompt_double_positive("Max unit price: ", &max_price)) {
+                continue;
+            }
+            if (min_price > max_price) {
+                double temp = min_price;
+                min_price = max_price;
+                max_price = temp;
+            }
+            count = stack_search_unit_price_interval(stack, min_price, max_price, positions, max_positions);
+        }
+
+        print_stack_search_matches(stack, positions, count);
+    }
+
+    free(positions);
+}
+
+static void run_stack_delete_menu(Stack *stack) {
+    int option;
+    int position;
+    char text[INPUT_BUFFER_SIZE];
+    size_t deleted_count;
+    WarehouseRecord removed_record;
+    int priority;
+
+    if (stack == NULL || stack->size == 0) {
+        printf("Stack is empty.\n");
+        return;
+    }
+
+    while (1) {
+        printf("\nStack delete menu:\n");
+        printf("1. Delete by position\n");
+        printf("2. Delete by product name (first match)\n");
+        printf("3. Delete by owner surname (first match)\n");
+        printf("4. Delete all by product name (with confirmation)\n");
+        printf("5. Delete all by owner surname (with confirmation)\n");
+        printf("0. Back\n");
+
+        if (!prompt_int_in_range("Choice: ", 0, 5, &option)) {
+            return;
+        }
+        if (option == 0) {
+            return;
+        }
+
+        if (option == 1) {
+            if (!prompt_int_in_range("Position: ", 1, (int)stack->size, &position)) {
+                continue;
+            }
+            if (stack_delete_by_position(stack, (size_t)position, &removed_record, &priority)) {
+                print_deleted_record(&removed_record, priority);
+            } else {
+                printf("Delete failed.\n");
+            }
+        } else if (option == 2) {
+            if (!prompt_non_empty_text("Product name: ", text, sizeof(text))) {
+                continue;
+            }
+            deleted_count = stack_delete_by_product_name(stack, text, 0);
+            printf("Deleted: %zu record(s)\n", deleted_count);
+        } else if (option == 3) {
+            if (!prompt_non_empty_text("Owner surname: ", text, sizeof(text))) {
+                continue;
+            }
+            deleted_count = stack_delete_by_owner_surname(stack, text, 0);
+            printf("Deleted: %zu record(s)\n", deleted_count);
+        } else if (option == 4) {
+            if (!prompt_non_empty_text("Product name: ", text, sizeof(text))) {
+                continue;
+            }
+            if (!prompt_yes_no("Confirm delete all matching product records? (y/n): ")) {
+                printf("Deletion canceled.\n");
+                continue;
+            }
+            deleted_count = stack_delete_by_product_name(stack, text, 1);
+            printf("Deleted: %zu record(s)\n", deleted_count);
+        } else if (option == 5) {
+            if (!prompt_non_empty_text("Owner surname: ", text, sizeof(text))) {
+                continue;
+            }
+            if (!prompt_yes_no("Confirm delete all matching owner surname records? (y/n): ")) {
+                printf("Deletion canceled.\n");
+                continue;
+            }
+            deleted_count = stack_delete_by_owner_surname(stack, text, 1);
+            printf("Deleted: %zu record(s)\n", deleted_count);
+        }
+
+        if (stack->size == 0) {
+            printf("Stack became empty.\n");
+            return;
+        }
+    }
+}
+
+static void save_active_stack_to_output(const Stack *stack) {
+    WarehouseRecord *records = NULL;
+    int *priorities = NULL;
+    size_t count = 0;
+    int mode;
+
+    if (stack == NULL) {
+        return;
+    }
+    if (!stack_export_arrays(stack, &records, &priorities, &count)) {
+        printf("Failed to extract stack data.\n");
+        return;
+    }
+
+    printf("Save mode:\n");
+    printf("1. Append to output.txt\n");
+    printf("2. Rewrite output.txt\n");
+    if (!prompt_int_in_range("Choice: ", 1, 2, &mode)) {
+        free(records);
+        free(priorities);
+        return;
+    }
+
+    if (save_records_to_file(OUTPUT_PATH, records, NULL, count, mode == 1)) {
+        printf("Stack saved to %s\n", OUTPUT_PATH);
+    } else {
+        printf("Failed to save stack.\n");
+    }
+
+    free(records);
+    free(priorities);
+}
+
 static void delete_file_from_menu(void) {
     int option;
     int confirm;
@@ -828,26 +1130,96 @@ static void delete_file_from_menu(void) {
     }
 }
 
-int main(void) {
-    AppState state;
+static void run_stack_main_menu(Stack *stack) {
     int option;
 
-    if (!ensure_data_directory()) {
-        printf("Failed to ensure data directory.\n");
-        return 1;
-    }
-    ensure_file_exists(EXPERIMENT_PATH);
-    ensure_file_exists(OUTPUT_PATH);
+    while (1) {
+        printf("\nStack menu:\n");
+        printf("1. Load records from experiment.txt\n");
+        printf("2. Add record manually\n");
+        printf("3. Display records\n");
+        printf("4. Stack operations\n");
+        printf("5. Search record\n");
+        printf("6. Delete record\n");
+        printf("7. Save current stack to output.txt\n");
+        printf("8. Copy output.txt to beginning of experiment.txt\n");
+        printf("9. Delete file\n");
+        printf("0. Back to Stack/Queue selection\n");
 
-    queue_init(&state.simple_queue, QUEUE_SIMPLE);
-    queue_init(&state.deque_queue, QUEUE_DEQUE);
-    queue_init(&state.circular_queue, QUEUE_CIRCULAR);
-    queue_init(&state.priority_queue, QUEUE_PRIORITY);
-    state.active_type = QUEUE_SIMPLE;
+        if (!prompt_int_in_range("Choice: ", 0, 9, &option)) {
+            return;
+        }
+
+        if (option == 0) {
+            return;
+        }
+
+        if (option == 1) {
+            int load_mode;
+            FILE *file;
+            int loaded;
+
+            if (!reopen_file_read(EXPERIMENT_PATH, &file)) {
+                printf("Cannot open %s for reading.\n", EXPERIMENT_PATH);
+                continue;
+            }
+            fclose(file);
+
+            printf("Load mode:\n");
+            printf("1. Append to existing stack\n");
+            printf("2. Replace existing stack\n");
+            if (!prompt_int_in_range("Choice: ", 1, 2, &load_mode)) {
+                continue;
+            }
+
+            loaded = load_records_into_stack(stack, EXPERIMENT_PATH, load_mode == 2);
+            if (loaded >= 0) {
+                printf("Loaded records: %d\n", loaded);
+            } else {
+                printf("Load failed.\n");
+            }
+        } else if (option == 2) {
+            WarehouseRecord record;
+            if (!input_record_from_user(&record)) {
+                printf("Record input canceled.\n");
+                continue;
+            }
+            if (!write_record_to_file(EXPERIMENT_PATH, &record, 1)) {
+                printf("Warning: failed to append record to %s\n", EXPERIMENT_PATH);
+            }
+            if (stack_push(stack, &record)) {
+                printf("Record pushed to stack.\n");
+            } else {
+                printf("Failed to push record to stack.\n");
+            }
+        } else if (option == 3) {
+            stack_display(stack, stdout);
+        } else if (option == 4) {
+            run_stack_operations_menu(stack);
+        } else if (option == 5) {
+            run_stack_search_menu(stack);
+        } else if (option == 6) {
+            run_stack_delete_menu(stack);
+        } else if (option == 7) {
+            save_active_stack_to_output(stack);
+        } else if (option == 8) {
+            if (copy_file_to_beginning(OUTPUT_PATH, EXPERIMENT_PATH)) {
+                printf("Copied %s to beginning of %s\n", OUTPUT_PATH, EXPERIMENT_PATH);
+            } else {
+                printf("Copy operation failed.\n");
+            }
+        } else if (option == 9) {
+            delete_file_from_menu();
+        }
+    }
+}
+
+static void run_queue_main_menu(AppState *state) {
+    int option;
 
     while (1) {
-        Queue *active_queue = get_queue_by_type(&state, state.active_type);
-        printf("\nMain menu (active: %s):\n", queue_type_name(state.active_type));
+        Queue *active_queue = get_queue_by_type(state, state->active_type);
+        printf("\nQueue menu (active: %s):\n", queue_type_name(state->active_type));
         printf("1. Load records from experiment.txt\n");
         printf("2. Add record manually\n");
         printf("3. Display records\n");
@@ -860,14 +1232,14 @@ int main(void) {
         printf("10. Save current queue to output.txt\n");
         printf("11. Copy output.txt to beginning of experiment.txt\n");
         printf("12. Delete file\n");
-        printf("0. Exit\n");
+        printf("0. Back to Stack/Queue selection\n");
 
         if (!prompt_int_in_range("Choice: ", 0, 12, &option)) {
-            break;
+            return;
         }
 
         if (option == 0) {
-            break;
+            return;
         }
 
         if (option == 1) {
@@ -879,8 +1251,8 @@ int main(void) {
             if (!select_queue_type(&selected_type)) {
                 continue;
             }
-            state.active_type = selected_type;
-            active_queue = get_queue_by_type(&state, state.active_type);
+            state->active_type = selected_type;
+            active_queue = get_queue_by_type(state, state->active_type);
 
             if (!reopen_file_read(EXPERIMENT_PATH, &file)) {
                 printf("Cannot open %s for reading.\n", EXPERIMENT_PATH);
@@ -918,17 +1290,17 @@ int main(void) {
         } else if (option == 3) {
             display_queue_records(active_queue);
         } else if (option == 4) {
-            state.active_type = QUEUE_SIMPLE;
-            run_simple_queue_menu(&state.simple_queue);
+            state->active_type = QUEUE_SIMPLE;
+            run_simple_queue_menu(&state->simple_queue);
         } else if (option == 5) {
-            state.active_type = QUEUE_DEQUE;
-            run_deque_menu(&state.deque_queue);
+            state->active_type = QUEUE_DEQUE;
+            run_deque_menu(&state->deque_queue);
         } else if (option == 6) {
-            state.active_type = QUEUE_CIRCULAR;
-            run_circular_menu(&state.circular_queue);
+            state->active_type = QUEUE_CIRCULAR;
+            run_circular_menu(&state->circular_queue);
         } else if (option == 7) {
-            state.active_type = QUEUE_PRIORITY;
-            run_priority_menu(&state.priority_queue);
+            state->active_type = QUEUE_PRIORITY;
+            run_priority_menu(&state->priority_queue);
         } else if (option == 8) {
             run_search_menu(active_queue);
         } else if (option == 9) {
@@ -945,7 +1317,47 @@ int main(void) {
             delete_file_from_menu();
         }
     }
+}
 
+int main(void) {
+    AppState state;
+    int option;
+
+    if (!ensure_data_directory()) {
+        printf("Failed to ensure data directory.\n");
+        return 1;
+    }
+    ensure_file_exists(EXPERIMENT_PATH);
+    ensure_file_exists(OUTPUT_PATH);
+
+    stack_init(&state.stack);
+    queue_init(&state.simple_queue, QUEUE_SIMPLE);
+    queue_init(&state.deque_queue, QUEUE_DEQUE);
+    queue_init(&state.circular_queue, QUEUE_CIRCULAR);
+    queue_init(&state.priority_queue, QUEUE_PRIORITY);
+    state.active_type = QUEUE_SIMPLE;
+
+    while (1) {
+        printf("\nSelect data structure:\n");
+        printf("1. Stack\n");
+        printf("2. Queue\n");
+        printf("0. Exit\n");
+
+        if (!prompt_int_in_range("Choice: ", 0, 2, &option)) {
+            break;
+        }
+
+        if (option == 0) {
+            break;
+        }
+        if (option == 1) {
+            run_stack_main_menu(&state.stack);
+        } else if (option == 2) {
+            run_queue_main_menu(&state);
+        }
+    }
+
+    stack_clear(&state.stack);
     queue_clear(&state.simple_queue);
     queue_clear(&state.deque_queue);
     queue_clear(&state.circular_queue);
